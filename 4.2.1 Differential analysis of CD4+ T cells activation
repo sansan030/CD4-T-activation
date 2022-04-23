@@ -1,0 +1,43 @@
+# 4.2.1 Differential analysis of CD4+ T cells activation
+
+# comparing the activation samples of CD4+ cells with resting samples
+Idents(CD4.combined) <- 'celltype'
+Dat <- FindMarkers(object = CD4.combined , ident.1 = 'Activation', ident.2 = 'Resting',assay = 'RNA',logfc.threshold = 0)
+Dat=cbind(allele=row.names(Dat), Dat)  #将行名作为第一列‘genes’
+
+#确定是上调还是下调，用于给图中点上色）
+Dat$threshold = factor(ifelse(Dat$p_val_adj < 0.05 & abs(Dat$avg_logFC) >= 1, ifelse(Dat$avg_logFC>= 1 ,'Activation','Resting'),'NoSignifi'),levels=c('Activation','Resting','NoSignifi'))
+
+#scatter plot
+theme_set(theme_cowplot())
+avg.cells <- log1p(AverageExpression(subset(CD4.combined,ident= c('Activation','Resting')), verbose = FALSE)$RNA)
+avg.cells$gene <- rownames(avg.cells)
+avg.cells <- na.omit(avg.cells)  #去除NA值
+
+gene.up <- Dat[Dat$threshold == 'Activation','allele']
+gene.do <- Dat[Dat$threshold == 'Resting','allele']
+avg.cells$threshold <- 'NoSignifi'
+avg.cells[rownames(avg.cells) %in% gene.up, 'threshold'] <- 'Activation'
+avg.cells[rownames(avg.cells) %in% gene.do, 'threshold'] <- 'Resting'
+
+p1<-ggplot(avg.cells, aes(Resting,Activation))+
+  geom_point(aes(color = threshold), size=2,alpha=0.6) +
+  scale_color_manual(values = c("#DC143C","#808080","#00008B"))  + 
+  theme(legend.title = element_blank()) +
+  theme_bw() +
+  xlim(0,4) + ylim(0,4) +
+  ggtitle(label = 'Activation vs Resting CD4+ T')
+p1<- LabelPoints(plot = p1,points = c(as.character(gene.in),as.character(gene.re)), repel = T)
+
+# showing activation levels of samples of CD4+ T cells
+DimPlot(CD4.combined, group.by = "activated",label = F,cols = rev(c('#add8e6','#f08080'))) + 
+  theme(legend.position=c(0.1,0.1))
+
+VlnPlot(CD4.combined, features = c("MIR155HG"),group.by = 'orig.ident',set3,pt.size = 0) +
+  theme(legend.position='none', axis.title.x = element_blank())
+VlnPlot(CD4.combined, features = c("CD69"),group.by = 'orig.ident',set3,pt.size = 0) +
+  theme(legend.position='none', axis.title.x = element_blank())
+VlnPlot(CD4.combined, features = c("IL2RA"),group.by = 'orig.ident',set3,pt.size = 0) +
+  theme(legend.position='none', axis.title.x = element_blank())
+VlnPlot(CD4.combined, features = c("NME1"),group.by = 'orig.ident',set3,pt.size = 0) +
+  theme(legend.position='none', axis.title.x = element_blank())
